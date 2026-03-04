@@ -709,6 +709,8 @@ nginx.ingress.kubernetes.io/proxy-body-size: 8m
 
 Sets a text that [should be changed in the domain attribute](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cookie_domain) of the "Set-Cookie" header fields of a proxied server response.
 
+Value must be either `off` or two space-separated tokens (source domain and replacement).
+
 To configure this setting globally for all Ingress rules, the `proxy-cookie-domain` value may be set in the [NGINX ConfigMap](./configmap.md#proxy-cookie-domain).
 
 ### Proxy cookie path
@@ -861,7 +863,7 @@ It can be enabled using the following annotation:
 ```yaml
 nginx.ingress.kubernetes.io/enable-modsecurity: "true"
 ```
-ModSecurity will run in "Detection-Only" mode using the [recommended configuration](https://github.com/SpiderLabs/ModSecurity/blob/v3/master/modsecurity.conf-recommended).
+ModSecurity will run in "Detection-Only" mode using the [recommended configuration](https://github.com/owasp-modsecurity/ModSecurity/blob/v3/master/modsecurity.conf-recommended).
 
 You can enable the [OWASP Core Rule Set](https://www.modsecurity.org/CRS/Documentation/) by
 setting the following annotation:
@@ -883,7 +885,7 @@ nginx.ingress.kubernetes.io/modsecurity-snippet: |
 
 Note: If you use both `enable-owasp-core-rules` and `modsecurity-snippet` annotations together, only the
 `modsecurity-snippet` will take effect. If you wish to include the [OWASP Core Rule Set](https://www.modsecurity.org/CRS/Documentation/) or
-[recommended configuration](https://github.com/SpiderLabs/ModSecurity/blob/v3/master/modsecurity.conf-recommended) simply use the include
+[recommended configuration](https://github.com/owasp-modsecurity/ModSecurity/blob/v3/master/modsecurity.conf-recommended) simply use the include
 statement:
 
 nginx 0.24.1 and below

@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strconv"
@@ -27,6 +28,8 @@ import (
 	apiv1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/operation"
+	"k8s.io/apimachinery/pkg/api/validate"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -361,6 +364,12 @@ func (n *NGINXController) CheckIngress(ing *networking.Ingress) error {
 	startRender := time.Now().UnixNano() / 1000000
 	cfg := n.store.GetBackendConfiguration()
 	cfg.Resolver = n.resolver
+
+	// Validate UID
+	// The only argument that matters is ing.UID.
+	if err := validate.UUID(context.TODO(), operation.Operation{}, nil, &ing.UID, nil); err != nil {
+		return fmt.Errorf("ingress has invalid UID: %v", err)
+	}
 
 	// Adds the pathType Validation
 	if cfg.StrictValidatePathType {
@@ -1422,6 +1431,10 @@ func (n *NGINXController) createServers(data []*ingress.Ingress,
 				}
 			}
 
+			if !servers[host].SSLPassthrough && anns.SSLPassthrough {
+				servers[host].SSLPassthrough = true
+			}
+
 			// only add SSL ciphers if the server does not have them previously configured
 			if servers[host].SSLCiphers == "" && anns.SSLCipher.SSLCiphers != "" {
 				servers[host].SSLCiphers = anns.SSLCipher.SSLCiphers
@@ -1834,16 +1847,14 @@ func checkOverlap(ing *networking.Ingress, servers []*ingress.Server) error {
 				continue
 			}
 
-			// same ingress
-			for _, existing := range existingIngresses {
-				if existing.ObjectMeta.Namespace == ing.ObjectMeta.Namespace && existing.ObjectMeta.Name == ing.ObjectMeta.Name {
-					return nil
-				}
-			}
-
 			// path overlap. Check if one of the ingresses has a canary annotation
 			isCanaryEnabled, annotationErr := parser.GetBoolAnnotation("canary", ing, canary.CanaryAnnotations.Annotations)
 			for _, existing := range existingIngresses {
+				if existing.ObjectMeta.Namespace == ing.ObjectMeta.Namespace && existing.ObjectMeta.Name == ing.ObjectMeta.Name {
+					// same ingress
+					continue
+				}
+
 				isExistingCanaryEnabled, existingAnnotationErr := parser.GetBoolAnnotation("canary", existing, canary.CanaryAnnotations.Annotations)
 
 				if isCanaryEnabled && isExistingCanaryEnabled {
@@ -1856,7 +1867,6 @@ func checkOverlap(ing *networking.Ingress, servers []*ingress.Server) error {
 			}
 
 			// no overlap
-			return nil
 		}
 	}
 

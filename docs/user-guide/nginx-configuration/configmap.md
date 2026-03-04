@@ -512,7 +512,7 @@ Example for json output:
 
 log-format-upstream: '{"time": "$time_iso8601", "remote_addr": "$proxy_protocol_addr", "x_forwarded_for": "$proxy_add_x_forwarded_for", "request_id": "$req_id",
   "remote_user": "$remote_user", "bytes_sent": $bytes_sent, "request_time": $request_time, "status": $status, "vhost": "$host", "request_proto": "$server_protocol",
-  "path": "$uri", "request_query": "$args", "request_length": $request_length, "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer",
+  "path": "$uri", "request_query": "$args", "request_length": $request_length, "method": "$request_method", "http_referrer": "$http_referer",
   "http_user_agent": "$http_user_agent" }'
 ```
 
@@ -1095,6 +1095,8 @@ Sets a text that [should be changed in the path attribute](https://nginx.org/en/
 
 Sets a text that [should be changed in the domain attribute](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cookie_domain) of the “Set-Cookie” header fields of a proxied server response.
 
+Value must be either `off` or two space-separated tokens (source domain and replacement).
+
 ## proxy-next-upstream
 
 Specifies in [which cases](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream) a request should be passed to the next server.
@@ -1117,6 +1119,7 @@ _References:_
 ## proxy-request-buffering
 
 Enables or disables [buffering of a client request body](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_request_buffering).
+Valid values are `on` and `off`.
 
 ## ssl-redirect
 

@@ -68,7 +68,7 @@ const (
 // Writer is the interface to render a template
 type Writer interface {
 	// Write renders the template.
-	// NOTE: Implementors must ensure that the content of the returned slice is not modified by the implementation
+	// NOTE: Implementers must ensure that the content of the returned slice is not modified by the implementation
 	// after the return of this function.
 	Write(conf *config.TemplateConfig) ([]byte, error)
 }
@@ -278,6 +278,7 @@ var funcMap = text_template.FuncMap{
 	"buildLuaSharedDictionaries":      buildLuaSharedDictionaries,
 	"luaConfigurationRequestBodySize": luaConfigurationRequestBodySize,
 	"buildLocation":                   buildLocation,
+	"sanitizeQuotedRegex":             sanitizeQuotedRegex,
 	"buildAuthLocation":               buildAuthLocation,
 	"shouldApplyGlobalAuth":           shouldApplyGlobalAuth,
 	"buildAuthResponseHeaders":        buildAuthResponseHeaders,
@@ -526,16 +527,30 @@ func buildLocation(input interface{}, enforceRegex bool) string {
 		return slash
 	}
 
-	path := location.Path
+	path := sanitizeQuotedRegex(location.Path)
 	if enforceRegex {
 		return fmt.Sprintf(`~* "^%s"`, path)
 	}
-
 	if location.PathType != nil && *location.PathType == networkingv1.PathTypeExact {
-		return fmt.Sprintf(`= %s`, path)
+		return fmt.Sprintf(`= "%s"`, path)
 	}
 
-	return path
+	return fmt.Sprintf(`"%s"`, path)
+}
+
+// sanitizeQuotedRegex escapes backslashes and double quotes in a location path
+// so paths cannot escape NGINX configuration.
+func sanitizeQuotedRegex(path string) string {
+	builder := strings.Builder{}
+	builder.Grow(2 * len(path))
+	// note that iterating over a string iterates over its runes, not bytes
+	for _, r := range path {
+		if r == '\\' || r == '"' {
+			builder.WriteByte('\\')
+		}
+		builder.WriteRune(r)
+	}
+	return builder.String()
 }
 
 func buildAuthLocation(input interface{}, globalExternalAuthURL string) string {
@@ -549,9 +564,7 @@ func buildAuthLocation(input interface{}, globalExternalAuthURL string) string {
 		return ""
 	}
 
-	str := base64.URLEncoding.EncodeToString([]byte(location.Path))
-	// removes "=" after encoding
-	str = strings.ReplaceAll(str, "=", "")
+	str := base64.RawURLEncoding.EncodeToString([]byte(location.Path))
 
 	pathType := "default"
 	if location.PathType != nil {
@@ -849,7 +862,7 @@ func buildRateLimitZones(input interface{}) []string {
 		}
 	}
 
-	return zones.UnsortedList()
+	return sets.List(zones)
 }
 
 // buildRateLimit produces an array of limit_req to be used inside the Path of
